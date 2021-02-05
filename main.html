@@ -1,0 +1,797 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<title>WMC Simulator JavaScript</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/5.0.4/math.min.js"></script>
+<script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+<script src="./global.js"></script>
+<script src="./read.js"></script>
+<script src="./compress/initial_setting.js"></script>
+<script src="./compress/tiny.js"></script>
+<!--<script src="./compress/wmc.js"></script>-->
+<script src="./compress/setnszero.js"></script>
+<script src="scripts/wmc.js"></script>
+
+<style>
+    .device {
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        width: 800px;
+    }
+    .graph {
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        width: 800px;
+        height: 400px;
+    }
+    #wrapper {
+        margin: 0.0em 1.0em 0.0em 1.0em;
+        padding: 10px 10px 10px 10px;
+    }
+</style>
+</head>
+<body>
+    <div id="wrapper">
+        <h1>デバイスシミュレータ</h1>
+        <p>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mos" id="mosupdate" onclick="n1=60;dop1=1.0e+24;n2=10;dop2=1.0e+22;n3=10;dop3=1.0e+22;n4=10;dop4=1.0e+22;n5=60;dop5=1.0e+24;ispc=10;dop_spc=1.0e+22;" checked>
+                <label class="form-check-label" for="mosupdate">MOS</label> &emsp;
+                <input class="form-check-input" type="radio" name="mos" id="pnupdate" onclick="n1=60;n2=15;n3=10;n4=10;n5=55;ispc=0;dop1=-1.0e+24;dop2=-1.0e+24;dop3=+1.0e+24;dop4=1.0e+24; dop5=dop4;">
+                <label class="form-check-label" for="pnupdate">PN</label>
+            </div>
+            <div id="input">
+                <div id="input_mos">
+                    <strong>chanel length</strong> <input type="text" name="chanel_length" id="chanel_length" value="30" style="width: 45px;">\(nm\)
+                    <strong>chanel dop</strong> <input type="text" name="chanel_dop" id="chanel_dop" value="1.0e+22" style="width: 80px;"><br>
+                    <strong>source dop</strong> <input type="text" name="source_dop" id="source_dop" value="1.0e+24" style="width: 80px;">
+                    <strong>drain dop</strong> <input type="text" name="drain_dop" id="drain_dop" value="1.0e+24" style="width: 80px;">
+                </div>
+            </div>
+            <form name="vd">
+                <div>
+                    <strong>\(v_d max\)</strong> <input id="vd_max" type="text" value="0.2" style="width: 45px;">
+                    <strong>\(v_d min\)</strong> <input id="vd_min" type="text" value="-0.2" style="width: 45px;">
+                    <strong>刻み幅</strong> <input id="delta" type="text" value="0.1" style="width: 45px;"><br>
+                </div>
+            </form>
+            <div id="step">
+                <button id="nextstep" type="button" class="btn btn-outline-primary btn-lg">Next Step</button>
+                <button id="steady" type="button" class="btn btn-outline-primary btn-lg">Steady</button>
+                <button id="start" type="button" value="true" class="btn btn-outline-primary btn-lg">Start</button>
+            </div>
+
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progress-bar" style="width: 0%">0%</div>
+            </div>
+        
+            <form name=step>
+                <input type="text" name="fps" value="-" size="5"> steps
+            </form>
+        </p>
+    </div>
+    <div class="device", id="device">
+        <canvas id="mos"></canvas>
+    </div>
+    <div class="graph">
+        <div id="potential"></div>
+        <canvas id="ctx_dpsi"></canvas><br>
+        <div id="density"></div>
+        <canvas id="ctx_cn"></canvas><br>
+        <div id="qnv"></div>
+        <canvas id="ctx_vdi"></canvas>
+    </div>
+
+    <script src="./draw.js"></script>
+    <script>
+        var cnChart, dpsiChart, vdiChart;
+        var ctx_cn = document.getElementById("ctx_cn").getContext("2d");
+        var ctx_dpsi = document.getElementById("ctx_dpsi").getContext("2d");
+        var ctx_vdi = document.getElementById("ctx_vdi").getContext("2d");
+        function reset() {
+            plotDpsiData_500 = [];
+            plotDpsiData_1500 = [];
+            plotDpsiData_3000 = [];
+            plotDpsiData_4500 = [];
+            plotDpsiData_6000 = [];
+            plotDpsiData_7500 = [];
+            plotDpsiData_9000 = [];
+            plotDpsiData_10500 = [];
+            plotDpsiData_12000 = [];
+            plotDpsiData_13500 = [];
+            plotDpsiData_15000 = [];
+            plotCnData_500 = [];
+            plotCnData_1500 = [];
+            plotCnData_3000 = [];
+            plotCnData_4500 = [];
+            plotCnData_6000 = [];
+            plotCnData_7500 = [];
+            plotCnData_9000 = [];
+            plotCnData_10500 = [];
+            plotCnData_12000 = [];
+            plotCnData_13500 = [];
+            plotCnData_15000 = []; 
+            plotCpData_500 = [];
+            plotCpData_1500 = [];
+            plotCpData_3000 = [];
+            plotCpData_4500 = [];
+            plotCpData_6000 = [];
+            plotCpData_7500 = [];
+            plotCpData_9000 = [];
+            plotCpData_10500 = [];
+            plotCpData_12000 = [];
+            plotCpData_13500 = [];
+            plotCpData_15000 = []; 
+            plotVdIData = [];
+        }
+        function reset2() {
+            plotCpData = [];
+            plotCpData_500 = [];
+            plotCpData_1500 = [];
+            plotCpData_3000 = [];
+            plotCpData_4500 = [];
+            plotCpData_6000 = [];
+            plotCpData_7500 = [];
+            plotCpData_9000 = [];
+            plotCpData_10500 = [];
+            plotCpData_12000 = [];
+            plotCpData_13500 = [];
+            plotCpData_15000 = []; 
+        }
+        function main() {
+            console.log("start")
+            /*初期設定*/
+            initial_setting();
+            initial_settingp();
+            /*メインループ*/
+            jtotal = 0;
+            jtl = 15000;
+            jtrans = jtl / 10;
+            for(jt = 1; jt <= jtl+1; jt++) {
+                t = dt * (jt - 1);
+                if(dop1 > 0) wmc();
+                else wmcp();
+                if((jt - intMC * Math.floor(jt/intMC)) == 1) {setnszero();}
+                if(vd == vd_display) {
+                    if(jt == 1) {
+                        plotCnData = [];plotDpsiData = [];plotCpData = [];
+                        for(var i = 0; i <= nx1; ++i){
+                            gdx[i] = Math.floor(dx*i*1.0E+9);
+                            gcn[i] = cn[i];
+                            gdpsi[i] = -dpsi[i];
+                            gcp[i] = cp[i];
+                            plotCnData.push({ x: gdx[i], y: gcn[i] });
+                            plotDpsiData.push({ x: gdx[i], y: gdpsi[i] });
+                            plotCpData.push({ x: gdx[i], y: gcp[i] });
+                        }
+                    }else if(jt == jtl/20) {
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_500[i] = -dpsi[i];
+                            gcn_500[i] = cn[i];
+                            gcp_500[i] = cp[i];
+                            plotCnData_500.push({ x: gdx[i], y: gcn_500[i] });
+                            plotDpsiData_500.push({ x: gdx[i], y: gdpsi_500[i] });
+                            plotCpData_500.push({ x: gdx[i], y: gcp_500[i] });
+                        }
+                    }else if(jt == jtl/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_1500[i] = -dpsi[i];
+                            gcn_1500[i] = cn[i];
+                            gcp_1500[i] = cp[i];
+                            plotCnData_1500.push({ x: gdx[i], y: gcn_1500[i] });
+                            plotDpsiData_1500.push({ x: gdx[i], y: gdpsi_1500[i] });
+                            plotCpData_1500.push({ x: gdx[i], y: gcp_1500[i] });
+                        }
+                    }else if(jt == jtl*2/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_3000[i] = -odpsi[i];
+                            gcn_3000[i] = ocn[i];
+                            gcp_3000[i] = ocp[i];
+                            plotCnData_3000.push({ x: gdx[i], y: gcn_3000[i] });
+                            plotDpsiData_3000.push({ x: gdx[i], y: gdpsi_3000[i] });
+                            plotCpData_3000.push({ x: gdx[i], y: gcp_3000[i] });
+                        }
+                    }else if(jt == jtl*3/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_4500[i] = -odpsi[i];
+                            gcn_4500[i] = ocn[i];
+                            gcp_4500[i] = ocp[i];
+                            plotCnData_4500.push({ x: gdx[i], y: gcn_4500[i] });
+                            plotDpsiData_4500.push({ x: gdx[i], y: gdpsi_4500[i] });
+                            plotCpData_4500.push({ x: gdx[i], y: gcp_4500[i] });
+                        }
+                    }else if(jt == jtl*4/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_6000[i] = -odpsi[i];
+                            gcn_6000[i] = ocn[i];
+                            gcp_6000[i] = ocp[i];
+                            plotCnData_6000.push({ x: gdx[i], y: gcn_6000[i] });
+                            plotDpsiData_6000.push({ x: gdx[i], y: gdpsi_6000[i] });
+                            plotCpData_6000.push({ x: gdx[i], y: gcp_6000[i] });
+                        }
+                    }else if(jt == jtl*5/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_7500[i] = -odpsi[i];
+                            gcn_7500[i] = ocn[i];
+                            gcp_7500[i] = ocp[i];
+                            plotCnData_7500.push({ x: gdx[i], y: gcn_7500[i] });
+                            plotDpsiData_7500.push({ x: gdx[i], y: gdpsi_7500[i] });
+                            plotCpData_7500.push({ x: gdx[i], y: gcp_7500[i] });
+                        }
+                    }else if(jt == jtl*6/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_9000[i] = -odpsi[i];
+                            gcn_9000[i] = ocn[i];
+                            gcp_9000[i] = ocp[i];
+                            plotCnData_9000.push({ x: gdx[i], y: gcn_9000[i] });
+                            plotDpsiData_9000.push({ x: gdx[i], y: gdpsi_9000[i] });
+                            plotCpData_9000.push({ x: gdx[i], y: gcp_9000[i] });
+                        }
+                    }else if(jt == jtl*7/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_10500[i] = -odpsi[i];
+                            gcn_10500[i] = ocn[i];
+                            gcp_10500[i] = ocp[i];
+                            plotCnData_10500.push({ x: gdx[i], y: gcn_10500[i] });
+                            plotDpsiData_10500.push({ x: gdx[i], y: gdpsi_10500[i] });
+                            plotCpData_10500.push({ x: gdx[i], y: gcp_10500[i] });
+                        }
+                    }else if(jt == jtl*8/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_12000[i] = -odpsi[i];
+                            gcn_12000[i] = ocn[i];
+                            gcp_12000[i] = ocp[i];
+                            plotCnData_12000.push({ x: gdx[i], y: gcn_12000[i] });
+                            plotDpsiData_12000.push({ x: gdx[i], y: gdpsi_12000[i] });
+                            plotCpData_12000.push({ x: gdx[i], y: gcp_12000[i] });
+                        }
+                    }else if(jt == jtl*9/10){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_13500[i] = -odpsi[i];
+                            gcn_13500[i] = ocn[i];
+                            gcp_13500[i] = ocp[i];
+                            plotCnData_13500.push({ x: gdx[i], y: gcn_13500[i] });
+                            plotDpsiData_13500.push({ x: gdx[i], y: gdpsi_13500[i] });
+                            plotCpData_13500.push({ x: gdx[i], y: gcp_13500[i] });
+                        }
+                    }else if(jt == jtl){
+                        for(var i = 0; i <= nx1; i++) {
+                            gdpsi_15000[i] = -odpsi[i];
+                            gcn_15000[i] = ocn[i];
+                            gcp_15000[i] = ocp[i];
+                            plotCnData_15000.push({ x: gdx[i], y: gcn_15000[i] });
+                            plotDpsiData_15000.push({ x: gdx[i], y: gdpsi_15000[i] });
+                            plotCpData_15000.push({ x: gdx[i], y: gcp_15000[i] });
+                        }
+                    }
+                }
+            }
+            var value = 0;
+            var interval = setInterval(function() {
+                value += step/100;
+                $("#progress-bar")
+                .css("width", value + "%")
+                .attr("aria-valuenow", value)
+                .text(value + "%");
+                if (value >= 100) {
+                    $("#progress-bar")
+                    .css("width", 100 + "%")
+                    .attr("aria-valuenow", 100)
+                    .text(100 + "%");
+                    clearInterval(interval);
+                }
+            }, 0);
+        }
+
+        var count = 0;
+        var loop;
+        var value = 0;
+        step = (vd_max - vd_min) / dif;
+        function main_loop() {
+            step = Number(step);
+            vd_display = vd_max;
+            vd_in = vd_min;
+            for(;;) {
+                if(dop1 > 0) {
+                    vd = vd_in;
+                    main();
+                    plotVdIData.push({x: vd, y: CurQNVav});
+                    vd_in += dif;
+                    /*
+                    $(function() {
+                        var value = 0;
+                        var interval = setInterval(function() {
+                            value += (vd_max - vd_min) / dif;
+                            console.log(value)
+                            $("#progress-bar")
+                            .css("width", value + "%")
+                            .attr("aria-valuenow", value)
+                            .text(value + "%");
+                            if (value >= 100)
+                                clearInterval(interval);
+                        }, 0);
+                    });
+                    */
+                    reset2();
+                    if(vd_in > vd_max) break;
+                }else {
+                    vd = -vd_in + (0.05);
+                    main();
+                    plotVdIData.push({x: vd_in, y: -CurQNVav});
+                    vd_in += dif;
+                    var j = 0;
+                    while(j < vd_display+0.15) {
+                        dotted.push({x: nx/2, y: 0.05-j});
+                        j += 0.01;
+                    }
+                    $(function() {
+                        //var value = 0;
+                        var interval = setInterval(function() {
+                            value += (vd_max - vd_min) / dif;
+                            $("#progress-bar")
+                            .css("width", value + "%")
+                            .attr("aria-valuenow", value)
+                            .text(value + "%");
+                            if (value >= 100)
+                                clearInterval(interval);
+                        }, 0);
+                    });
+                    if(vd_in > vd_max) {
+                        vd = vd_display;
+                        main();   
+                        break;
+                    }
+                }
+            }
+            var cnData = {
+                datasets: [{
+                    label: "電子",
+                    borderColor: "blue",
+                    backgroundColor: "blue",
+                    data: plotCnData,
+                    fill: false,
+                    showLine: true
+                },
+                {   
+                    label: "正孔",
+                    borderColor: "red",
+                    backgroundColor: "red",
+                    data: plotCpData,
+                    fill: false,
+                    showLine: true
+                }]
+            };
+            var dspiData = {
+                datasets: [{
+                    backgroundColor: "blue",
+                    data: plotDpsiData,
+                    fill: false,
+                    showLine: true
+                },
+                {
+                    backgroundColor: '#ffce56',
+                    data: dotted,
+                    fill: false,
+                    showLine: true
+                }]
+            };
+            var cnconfig = {
+                data: cnData,
+                options: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: '電荷密度分布'
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'linear',
+                            position: 'bottom',
+                            ticks: {
+                                min: 0,
+                                max: nx,
+                                stepSize: 30,
+                                userCallback: function(tick){
+                                    return tick.toString() + 'nm';
+                                },
+                            },
+                            scaleLabel: {
+                                labelString: 'length',
+                                display: true,
+                                fontsize: 16
+                            }
+                        }],
+                        yAxes: [{
+                            type: 'linear',
+                            ticks: {
+                                max: Math.abs(dop1) * 1.5,
+                                userCallback: function(value, index, values) {
+                                    return value.toExponential(2)
+                                }
+                            },
+                            scaleLabel: {
+                                labelString: 'Charge density(rou/m^2)',
+                                display: true
+                            }
+                        }]
+                    }
+                }
+            };
+            var dpsiconfig = {
+                data: dspiData,
+                options: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'ポテンシャル分布'
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'linear',
+                            position: 'bottom',
+                            ticks: {
+                                min: 0,
+                                stepSize: 30,
+                                userCallback: function(tick){
+                                    return tick.toString() + 'nm';
+                                },
+                            },
+                            scaleLabel: {
+                                labelString: 'length',
+                                display: true,
+                                fontsize: 16
+                            }
+                        }],
+                        yAxes: [{
+                            type: 'linear',
+                            ticks: {
+                                max: 0.05,
+                                min: -vd_display-0.05,
+                                stepSize: 0.05,
+                                userCallback: function(value, index, values){
+                                    return value.toFixed(2)
+                                }
+                            },
+                            scaleLabel: {
+                                labelString: 'Potencial(ev)',
+                                display: true
+                            }
+                        }]
+                    }
+                }
+            }
+            var VdIData = {
+                datasets: [{
+                    backgroundColor: "green",
+                    data: plotVdIData,
+                    fill: false,
+                    showLine: true
+                }]
+            };
+            var vdiconfig = {
+                data: VdIData,
+                options: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'vd-i特性'
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'linear',
+                            position: 'bottom',
+                            ticks: {
+                                //min: -0.2,
+                                //stepSize: 30,
+                                userCallback: function(tick){
+                                    return tick.toString() + 'v';
+                                    //return '';
+                                },
+                            },
+                            scaleLabel: {
+                                labelString: 'vd',
+                                display: true,
+                                fontsize: 16
+                            }
+                        }],
+                        yAxes: [{
+                            type: 'linear',
+                            ticks: {
+                                //max: 1.1e+24,
+                                stepSize: 5.0e+9,
+                                userCallback: function(value, index, values) {
+                                    return value.toExponential(2) + 'A/m^2'
+                                }
+                            },
+                            scaleLabel: {
+                                labelString: 'Current',
+                                display: true
+                            }
+                        }]
+                    }
+                }
+            };
+            cnChart = new Chart.Scatter(ctx_cn, cnconfig);
+            dpsiChart = new Chart.Scatter(ctx_dpsi, dpsiconfig);
+            vdiChart = new Chart.Scatter(ctx_vdi, vdiconfig);
+            console.log('=============');
+            console.log('---- END ----');
+            console.log('=============');
+            //alert("end calculation");
+        }
+        window.onload = function() {
+            mos();
+            document.step.fps.value = 1;
+            $("#vd_max").change(function() {
+                vd_max = Number(this.value);
+            });
+            $("#vd_min").change(function() {
+                vd_min = Number(this.value);
+            });
+            $("#vd").change(function() {
+                vd_display = Number(this.value);
+            });
+            $("#step").change(function() {
+                step = this.value;
+                const num = document.vd.vd_display.selectedIndex;
+                vd_display = document.vd.vd_display.options[num].value;
+                if(step == 1) {
+                    document.vd.vd_max.value = vd_display;
+                    vd_max = vd_display;
+                }
+            });
+            $("#delta").change(function() {
+                dif = Number(this.value);
+            });
+            $("#chanel_length").change(function() {
+                var temp = Number(this.value);
+                n2 = temp / 3;
+                n3 = temp / 3;
+                n4 = temp / 3;
+            });
+            $("#chanel_dop").change(function() {
+                dop2 = Number(this.value);
+                dop3 = Number(this.value);
+                dop4 = Number(this.value);
+                dop_spc = Number(this.value);
+            }); 
+            $("#source_dop").change(function() {
+                dop1 = Number(this.value);
+            });
+            $("#drain_dop").change(function() {
+                dop5 = Number(this.value);
+            });
+            $('#nextstep').on('click', function() {
+                if(count == 0) {
+                    document.step.fps.value = jtl/30;
+                    cnChart.data.datasets[0].data = plotCnData_500;
+                    cnChart.data.datasets[1].data = plotCpData_500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 1) {
+                    document.step.fps.value = jtl/10;
+                    cnChart.data.datasets[0].data = plotCnData_1500;
+                    cnChart.data.datasets[1].data = plotCpData_1500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_1500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 2) {
+                    document.step.fps.value = jtl*2/10;
+                    cnChart.data.datasets[0].data = plotCnData_3000;
+                    cnChart.data.datasets[1].data = plotCpData_3000;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_3000;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 3) {
+                    document.step.fps.value = jtl*3/10;
+                    cnChart.data.datasets[0].data = plotCnData_4500;
+                    cnChart.data.datasets[1].data = plotCpData_4500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_4500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 4) {
+                    document.step.fps.value = jtl*4/10;
+                    cnChart.data.datasets[0].data = plotCnData_6000;
+                    cnChart.data.datasets[1].data = plotCpData_6000;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_6000;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 5) {
+                    document.step.fps.value = jtl*5/10;
+                    cnChart.data.datasets[0].data = plotCnData_7500;
+                    cnChart.data.datasets[1].data = plotCpData_7500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_7500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 6) {
+                    document.step.fps.value = jtl*6/10;
+                    cnChart.data.datasets[0].data = plotCnData_9000;
+                    cnChart.data.datasets[1].data = plotCpData_9000;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_9000;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 7) {
+                    document.step.fps.value = jtl*7/10;
+                    cnChart.data.datasets[0].data = plotCnData_10500;
+                    cnChart.data.datasets[1].data = plotCpData_10500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_10500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 8) {
+                    document.step.fps.value = jtl*8/10;
+                    cnChart.data.datasets[0].data = plotCnData_12000;
+                    cnChart.data.datasets[1].data = plotCpData_12000;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_12000;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 9) {
+                    document.step.fps.value = jtl*9/10;
+                    cnChart.data.datasets[0].data = plotCnData_13500;
+                    cnChart.data.datasets[1].data = plotCpData_13500;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_13500;
+                    dpsiChart.update();
+                    count++;
+                }else if(count == 10) {
+                    document.step.fps.value = jtl;
+                    console.log("jt = %d",jt);
+                    cnChart.data.datasets[0].data = plotCnData_15000;
+                    cnChart.data.datasets[1].data = plotCpData_15000;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData_15000;
+                    dpsiChart.update();
+                    count++;
+                }else {
+                    document.step.fps.value = 1;
+                    cnChart.data.datasets[0].data = plotCnData;
+                    cnChart.data.datasets[1].data = plotCpData;
+                    cnChart.update();
+                    dpsiChart.data.datasets[0].data = plotDpsiData;
+                    dpsiChart.update();
+                    count = 0;
+                }
+            });
+            $('#steady').on('click', function() {
+                document.step.fps.value = 15000;
+                cnChart.data.datasets[0].data = plotCnData_15000;
+                cnChart.data.datasets[1].data = plotCpData_15000;
+                cnChart.update();
+                dpsiChart.data.datasets[0].data = plotDpsiData_15000;
+                dpsiChart.update();
+                count = 0; 
+            });
+            $('#pnupdate').change(function() {
+                $('#mos').remove();
+                $('#device').append(
+                    "<canvas id='mos'></canvas>"
+                )
+                pn();
+                $('#input_mos').remove();
+                $('#input').append(
+                    "<div id='input_pn'>" +
+                    "<strong>p dop</strong> <input type='text' name='p_dop' id='p_dop' value='1.0e+24' style='width: 80px'>" +
+                    "<strong>n dop</strong> <input type='text' name='n_dop' id='n_dop' value='1.0e+24' style='width: 80px'>" +
+                    "<strong>p length</strong> <input type='text' name='p_length' id='p_length' value='75' style='width: 45px;'>\(nm\)" +
+                    "<strong>n length</strong> <input type='text' name='n_length' id='n_length' value='75' style='width: 45px;'>\(nm\)" +
+                    "</div>");
+                $("#n_dop").change(function() {
+                    dop3 = Number(this.value);
+                    dop4 = Number(this.value);
+                    dop5 = Number(this.value);
+                });
+                $("#p_dop").change(function() {
+                    dop1 = Number(-this.value);
+                    dop2 = Number(-this.value);
+                });
+                $("#p_length").change(function() {
+                    n1 = Number(this.value - 15);
+                    n2 = Number(15);
+                });
+                $("#n_length").change(function() {
+                    n3 = Number(10);
+                    n4 = Number(10);
+                    n5 = Number(this.value - 20);
+                });
+            });
+            $('#mosupdate').change(function() {
+                $('#mos').remove();
+                $('#device').append(
+                    "<canvas id='mos'></canvas>"
+                )
+                mos();
+                $('#input_pn').remove();
+                $('#input').append(
+                    "<div id='input_mos'>" +
+                    "<strong>chanel length</strong> <input type='text' name='chanel_length' id='chanel_length' value='30' style='width: 45px;'>" +
+                    "<strong>chanel dop</strong> <input type='text' name='chanel_dop' id='chanel_dop' value='1.0e+22' style='width: 80px;'><br>" +
+                    "<strong>source dop</strong> <input type='text' name='source_dop' id='source_dop' value='1.0e+24' style='width: 80px;'>" +
+                    "<strong>drain dop</strong> <input type='text' name='drain_dop' id='drain_dop' value='1.0e+24' style='width: 80px;'>" +
+                    "</div>")
+                $("#chanel_length").change(function() {
+                    var temp = Number(this.value);
+                    n2 = temp / 3;
+                    n3 = temp / 3;
+                    n4 = temp / 3;
+                });
+                $("#chanel_dop").change(function() {
+                    dop2 = Number(this.value);
+                    dop3 = Number(this.value);
+                    dop4 = Number(this.value);
+                }); 
+                $("#source_dop").change(function() {
+                    dop1 = Number(this.value);
+                });
+                $("#drain_dop").change(function() {
+                    dop5 = Number(this.value);
+                });
+            });
+            $('#reset').on('click', function() {
+                $("#progress-bar")
+                .css("width", 0 + "%")
+                .attr("aria-valuenow", 0)
+                .text(0 + "%");
+            });
+            $('#start').on('click', function() {
+                if(cnChart) {
+                    cnChart.destroy();
+                    dpsiChart.destroy();
+                    vdiChart.destroy();
+                }
+                if(dop1 < 0) {
+                    $('#potential').html("\\begin\{align\} \n");
+                    $('#potential').append("\\frac{d^2 V(x)}{dx^2}=\\frac{e(N_a-p)-(N_d-n)}{\\epsilon}" + "\n");
+                    $('#potential').append("\\end\{align\}");
+                    $('#qnv').html("\\begin\{align\} \n");
+                    $('#qnv').append("I = I_0 \\{\\exp(\\frac{e(V-R_sI)}{nkT})-1\\}" + "\n");
+                    $('#qnv').append("\\end\{align\}");
+                }else {
+                    $('#potential').html("\\begin\{align\} \n");
+                    $('#potential').append("\\frac{d^2 V(x)}{dx^2}=\\frac{e(N_d-n)}{\\epsilon}" + "\n");
+                    $('#potential').append("\\end\{align\}");
+                    $('#qnv').html("\\begin\{align\} \n");
+                    $('#qnv').append("I_d = \\frac{\\mu WC_i}{L}V_d(V_g-V_t-\\frac{V_d}{2})" + "\n");
+                    $('#qnv').append("\\end\{align\}");
+                }
+                
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub, "potential"]);
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub, "qnv"]);
+                reset();
+                main_loop();
+                $('#step').append(
+                    "<button id='reset' type='button' value='true' class='btn btn-outline-primary btn-sm'>Reset</button>"
+                )
+            });
+        }
+    </script>
+</body>
+</html>
