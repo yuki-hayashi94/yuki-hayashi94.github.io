@@ -17,7 +17,7 @@
 <script src="./scripts/tiny.js"></script>
 <script src="./scripts/wmc.js"></script>
 <script src="./scripts/setnszero.js"></script>
-<!--<script src="scripts/wmc.js"></script>-->
+<script src="./draw.js"></script>
 
 <style>
     .device {
@@ -51,7 +51,7 @@
                 <input class="form-check-input" type="radio" name="mos" id="mosupdate" onclick="n1=60;dop1=1.0e+24;n2=10;dop2=1.0e+22;n3=10;dop3=1.0e+22;n4=10;dop4=1.0e+22;n5=60;dop5=1.0e+24;ispc=10;dop_spc=1.0e+22;" checked>
                 <label class="form-check-label" for="mosupdate">MOS</label> &emsp;
                 <input class="form-check-input" type="radio" name="mos" id="pnupdate" onclick="n1=60;n2=15;n3=10;n4=10;n5=55;ispc=0;dop1=-1.0e+24;dop2=-1.0e+24;dop3=+1.0e+24;dop4=1.0e+24; dop5=dop4;">
-                <label class="form-check-label" for="pnupdate">PN</label>
+                <label class="form-check-label" for="pnupdate">PN</label> 
             </div>
             <div id="input">
                 <div id="input_mos">
@@ -86,23 +86,25 @@
     <div class="device", id="device">
         <canvas id="mos"></canvas>
     </div>
-    <div class="graph">
+    <div class="graph", id="graph">
         <div id="potential"></div>
         <canvas id="ctx_dpsi"></canvas><br>
         <div id="density"></div>
         <canvas id="ctx_cn"></canvas><br>
         <div id="qnv"></div>
         <canvas id="ctx_vdi"></canvas>
+        <div id="grad"></div>
+        <canvas id='ctx_field'></canvas>
     </div>
-    <p>
-        <a href="https://forms.gle/RtJYb5kEQmQFgo4NA" title="アンケート" target="_blank">卒業研究アンケート</a>
-    </p>
-    <script src="./draw.js"></script>
+
+    
     <script>
-        var cnChart, dpsiChart, vdiChart;
+        var cnChart, dpsiChart, vdiChart, fieldChart;
+        var cnData, dspiData, cnconfig, dpsiconfig, VdIData, vdiconfig, fieldData, fieldconfig;
         var ctx_cn = document.getElementById("ctx_cn").getContext("2d");
         var ctx_dpsi = document.getElementById("ctx_dpsi").getContext("2d");
         var ctx_vdi = document.getElementById("ctx_vdi").getContext("2d");
+        var ctx_field = document.getElementById("ctx_field").getContext("2d");
         function reset() {
             plotDpsiData_500 = [];
             plotDpsiData_1500 = [];
@@ -138,6 +140,7 @@
             plotCpData_13500 = [];
             plotCpData_15000 = []; 
             plotVdIData = [];
+            plotFieldData = [];
         }
         function reset2() {
             plotCpData = [];
@@ -152,6 +155,7 @@
             plotCpData_12000 = [];
             plotCpData_13500 = [];
             plotCpData_15000 = []; 
+            dotted = [];
         }
         function main() {
             console.log("start")
@@ -277,10 +281,14 @@
                             plotCnData_15000.push({ x: gdx[i], y: gcn_15000[i] });
                             plotDpsiData_15000.push({ x: gdx[i], y: gdpsi_15000[i] });
                             plotCpData_15000.push({ x: gdx[i], y: gcp_15000[i] });
+                            diff[i] = (odpsi[i+1] - odpsi[i]) / (gdx[i+1] - gdx[i]);
+                            diff[i] = -diff[i] * 1e+9;
+                            plotFieldData.push({ x: gdx[i], y: diff[i] });
                         }
                     }
                 }
             }
+            /*
             var value = 0;
             var interval = setInterval(function() {
                 value += step/100;
@@ -296,6 +304,7 @@
                     clearInterval(interval);
                 }
             }, 0);
+            */
         }
 
         var count = 0;
@@ -312,21 +321,17 @@
                     main();
                     plotVdIData.push({x: vd, y: CurQNVav});
                     vd_in += dif;
-                    /*
-                    $(function() {
-                        var value = 0;
-                        var interval = setInterval(function() {
-                            value += (vd_max - vd_min) / dif;
-                            console.log(value)
-                            $("#progress-bar")
-                            .css("width", value + "%")
-                            .attr("aria-valuenow", value)
-                            .text(value + "%");
-                            if (value >= 100)
-                                clearInterval(interval);
-                        }, 0);
-                    });
-                    */
+                
+                    var interval = setInterval(function() {
+                        value += (vd_max - vd_min) / dif;
+                        $("#progress-bar")
+                        .css("width", value + "%")
+                        .attr("aria-valuenow", value)
+                        .text(value + "%");
+                        if (value >= 100)
+                            clearInterval(interval);
+                    }, 0);
+                   
                     reset2();
                     if(vd_in > vd_max) break;
                 }else {
@@ -339,18 +344,15 @@
                         dotted.push({x: nx/2, y: 0.05-j});
                         j += 0.01;
                     }
-                    $(function() {
-                        //var value = 0;
-                        var interval = setInterval(function() {
-                            value += (vd_max - vd_min) / dif;
-                            $("#progress-bar")
-                            .css("width", value + "%")
-                            .attr("aria-valuenow", value)
-                            .text(value + "%");
-                            if (value >= 100)
-                                clearInterval(interval);
-                        }, 0);
-                    });
+                    var interval = setInterval(function() {
+                        value += (vd_max - vd_min) / dif;
+                        $("#progress-bar")
+                        .css("width", value + "%")
+                        .attr("aria-valuenow", value)
+                        .text(value + "%");
+                        if (value >= 100)
+                            clearInterval(interval);
+                    }, 0);
                     if(vd_in > vd_max) {
                         vd = vd_display;
                         main();   
@@ -358,7 +360,7 @@
                     }
                 }
             }
-            var cnData = {
+            cnData = {
                 datasets: [{
                     label: "電子",
                     borderColor: "blue",
@@ -376,7 +378,7 @@
                     showLine: true
                 }]
             };
-            var dspiData = {
+            dspiData = {
                 datasets: [{
                     backgroundColor: "blue",
                     data: plotDpsiData,
@@ -390,7 +392,7 @@
                     showLine: true
                 }]
             };
-            var cnconfig = {
+            cnconfig = {
                 data: cnData,
                 options: {
                     legend: {
@@ -435,7 +437,7 @@
                     }
                 }
             };
-            var dpsiconfig = {
+            dpsiconfig = {
                 data: dspiData,
                 options: {
                     legend: {
@@ -466,7 +468,7 @@
                             type: 'linear',
                             ticks: {
                                 max: 0.05,
-                                //min: -vd_display-0.05,
+                                min: -vd_display-0.05,
                                 stepSize: 0.05,
                                 userCallback: function(value, index, values){
                                     return value.toFixed(2)
@@ -480,7 +482,7 @@
                     }
                 }
             }
-            var VdIData = {
+            VdIData = {
                 datasets: [{
                     backgroundColor: "green",
                     data: plotVdIData,
@@ -488,7 +490,7 @@
                     showLine: true
                 }]
             };
-            var vdiconfig = {
+            vdiconfig = {
                 data: VdIData,
                 options: {
                     legend: {
@@ -522,11 +524,64 @@
                                 //max: 1.1e+24,
                                 stepSize: 5.0e+9,
                                 userCallback: function(value, index, values) {
-                                    return value.toExponential(2) + 'A/m^2'
+                                    return value.toExponential(2);
                                 }
                             },
                             scaleLabel: {
-                                labelString: 'Current',
+                                labelString: 'Current(A/m^2)',
+                                display: true
+                            }
+                        }]
+                    }
+                }
+            };
+            fieldData = {
+                datasets: [{
+                    backgroundColor: "blue",
+                    data: plotFieldData,
+                    fill: false,
+                    showLine: true
+                }]
+            };
+            fieldconfig = {
+                data: fieldData,
+                options: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: '電界'
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'linear',
+                            position: 'bottom',
+                            ticks: {
+                                min: 0,
+                                stepSize: 30,
+                                userCallback: function(tick){
+                                    return tick.toString() + 'nm';
+                                    //return '';
+                                },
+                            },
+                            scaleLabel: {
+                                labelString: 'x',
+                                display: true,
+                                fontsize: 16
+                            }
+                        }],
+                        yAxes: [{
+                            type: 'linear',
+                            ticks: {
+                                //max: 1.1e+24,
+                                //stepSize: 5.0e+9,
+                                userCallback: function(value, index, values) {
+                                    return value.toExponential(2);
+                                }
+                            },
+                            scaleLabel: {
+                                labelString: 'Field(V/m)',
                                 display: true
                             }
                         }]
@@ -706,6 +761,18 @@
                     "<strong>p length</strong> <input type='text' name='p_length' id='p_length' value='75' style='width: 45px;'>\(nm\)" +
                     "<strong>n length</strong> <input type='text' name='n_length' id='n_length' value='75' style='width: 45px;'>\(nm\)" +
                     "</div>");
+                $('#step').append(
+                    "<div id='field'>" +
+                    "<button id='field_display' type='button' value='true' class='btn btn-outline-primary btn-sm'>電界表示</button>" +
+                    "</div>"
+                );
+                $('#field_display').on('click', function() {
+                    fieldChart = new Chart.Scatter(ctx_field, fieldconfig);
+                    $('#grad').html("\\begin\{align\} \n");
+                    $('#grad').append("F = -\\mathrm{grad}V" + "\n");
+                    $('#grad').append("\\end\{align\}");
+                    MathJax.Hub.Queue(["Typeset", MathJax.Hub, "grad"]);
+                });
                 $("#n_dop").change(function() {
                     dop3 = Number(this.value);
                     dop4 = Number(this.value);
@@ -726,6 +793,7 @@
                 });
             });
             $('#mosupdate').change(function() {
+                $('#field').remove();
                 $('#mos').remove();
                 $('#device').append(
                     "<canvas id='mos'></canvas>"
@@ -769,9 +837,10 @@
                     dpsiChart.destroy();
                     vdiChart.destroy();
                 }
+                if(fieldChart) fieldChart.destroy();
                 if(dop1 < 0) {
                     $('#potential').html("\\begin\{align\} \n");
-                    $('#potential').append("\\frac{d^2 V(x)}{dx^2}=\\frac{e(N_a-p)-(N_d-n)}{\\epsilon}" + "\n");
+                    $('#potential').append("\\frac{d^2 V(x)}{dx^2}=\\frac{e\\{(N_a-p)-(N_d-n)\\}}{\\epsilon}" + "\n");
                     $('#potential').append("\\end\{align\}");
                     $('#qnv').html("\\begin\{align\} \n");
                     $('#qnv').append("I = I_0 \\{\\exp(\\frac{e(V-R_sI)}{nkT})-1\\}" + "\n");
@@ -789,9 +858,6 @@
                 MathJax.Hub.Queue(["Typeset", MathJax.Hub, "qnv"]);
                 reset();
                 main_loop();
-                $('#step').append(
-                    "<button id='reset' type='button' value='true' class='btn btn-outline-primary btn-sm'>Reset</button>"
-                )
             });
         }
     </script>
