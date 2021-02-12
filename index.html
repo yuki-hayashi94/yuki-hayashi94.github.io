@@ -414,25 +414,32 @@
                                 max: nx,
                                 stepSize: 30,
                                 userCallback: function(tick){
-                                    return tick.toString() + 'nm';
+                                    return tick.toString();
                                 },
+                                fontColor: "black",
+                                fontSize: 20
                             },
                             scaleLabel: {
-                                labelString: 'length',
+                                labelString: 'x(nm)',
                                 display: true,
-                                fontsize: 16
+                                fontSize: 20,
+                                fontColor: 'black'
                             }
                         }],
                         yAxes: [{
                             type: 'linear',
                             ticks: {
                                 max: Math.abs(dop1) * 1.5,
+                                fontColor: "black",
+                                fontSize: 20,
                                 userCallback: function(value, index, values) {
                                     return value.toExponential(2)
                                 }
                             },
                             scaleLabel: {
-                                labelString: 'Charge density(rou/m^2)',
+                                fontColor: "black",
+                                fontSize: 20,
+                                labelString: 'Charge density(個/m^2)',
                                 display: true
                             }
                         }]
@@ -456,14 +463,17 @@
                             ticks: {
                                 min: 0,
                                 stepSize: 30,
+                                fontColor: "black",
+                                fontSize: 20,
                                 userCallback: function(tick){
-                                    return tick.toString() + 'nm';
+                                    return tick.toString();
                                 },
                             },
                             scaleLabel: {
-                                labelString: 'length',
+                                labelString: 'x(nm)',
                                 display: true,
-                                fontsize: 16
+                                fontColor: "black",
+                                fontSize: 20,
                             }
                         }],
                         yAxes: [{
@@ -471,12 +481,16 @@
                             ticks: {
                                 max: 0.05,
                                 min: -vd_display-0.05,
+                                fontColor: "black",
+                                fontSize: 20,
                                 stepSize: 0.05,
                                 userCallback: function(value, index, values){
                                     return value.toFixed(2)
                                 }
                             },
                             scaleLabel: {
+                                fontColor: "black",
+                                fontSize: 20,
                                 labelString: 'Potencial(ev)',
                                 display: true
                             }
@@ -500,7 +514,7 @@
                     },
                     title: {
                         display: true,
-                        text: 'vd-i特性'
+                        text: 'v-i特性'
                     },
                     scales: {
                         xAxes: [{
@@ -509,28 +523,35 @@
                             ticks: {
                                 //min: -0.2,
                                 //stepSize: 30,
+                                fontColor: "black",
+                                fontSize: 20,
                                 userCallback: function(tick){
                                     return tick.toString() + 'v';
                                     //return '';
                                 },
                             },
                             scaleLabel: {
-                                labelString: 'vd',
+                                labelString: 'v',
                                 display: true,
-                                fontsize: 16
+                                fontColor: "black",
+                                fontSize: 20,
                             }
                         }],
                         yAxes: [{
                             type: 'linear',
                             ticks: {
                                 //max: 1.1e+24,
+                                fontColor: "black",
+                                fontSize: 20,
                                 stepSize: 5.0e+9,
                                 userCallback: function(value, index, values) {
                                     return value.toExponential(2);
                                 }
                             },
                             scaleLabel: {
-                                labelString: 'Current(A/m^2)',
+                                fontColor: "black",
+                                fontSize: 20,
+                                labelString: 'Current density(A/cm^2)',
                                 display: true
                             }
                         }]
@@ -562,15 +583,18 @@
                             ticks: {
                                 min: 0,
                                 stepSize: 30,
+                                fontColor: "black",
+                                fontSize: 20,
                                 userCallback: function(tick){
-                                    return tick.toString() + 'nm';
+                                    return tick.toString();
                                     //return '';
                                 },
                             },
                             scaleLabel: {
-                                labelString: 'x',
+                                labelString: 'x(nm)',
                                 display: true,
-                                fontsize: 16
+                                fontColor: "black",
+                                fontSize: 20,
                             }
                         }],
                         yAxes: [{
@@ -578,11 +602,15 @@
                             ticks: {
                                 //max: 1.1e+24,
                                 //stepSize: 5.0e+9,
+                                fontColor: "black",
+                                fontSize: 20,
                                 userCallback: function(value, index, values) {
                                     return value.toExponential(2);
                                 }
                             },
                             scaleLabel: {
+                                fontColor: "black",
+                                fontSize: 20,
                                 labelString: 'Field(V/m)',
                                 display: true
                             }
