@@ -48,6 +48,7 @@
         <h1>デバイスシミュレータ</h1>
         <p>
             <a href="https://forms.gle/RtJYb5kEQmQFgo4NA" title="アンケート" target="_blank">卒業研究アンケート</a>
+            <a href="./simulator_document.pdf" target="_blank">使用方法</a>
         </p>
         <p>
             <div class="form-check">
@@ -388,8 +389,10 @@
                     showLine: true
                 },
                 {
-                    backgroundColor: '#ffce56',
+                    backgroundColor: 'black',
                     data: dotted,
+                    borderDash: [5,5],
+                    pointRadius: 0,
                     fill: false,
                     showLine: true
                 }]
@@ -462,6 +465,7 @@
                             position: 'bottom',
                             ticks: {
                                 min: 0,
+                                max: nx,
                                 stepSize: 30,
                                 fontColor: "black",
                                 fontSize: 20,
@@ -502,6 +506,7 @@
                 datasets: [{
                     backgroundColor: "green",
                     data: plotVdIData,
+                    borderColor: "green",
                     fill: false,
                     showLine: true
                 }]
@@ -514,7 +519,7 @@
                     },
                     title: {
                         display: true,
-                        text: 'v-i特性'
+                        text: 'vd-i特性'
                     },
                     scales: {
                         xAxes: [{
@@ -526,12 +531,12 @@
                                 fontColor: "black",
                                 fontSize: 20,
                                 userCallback: function(tick){
-                                    return tick.toString() + 'v';
+                                    return tick.toString();
                                     //return '';
                                 },
                             },
                             scaleLabel: {
-                                labelString: 'v',
+                                labelString: 'Drain Voltage(V)',
                                 display: true,
                                 fontColor: "black",
                                 fontSize: 20,
@@ -551,7 +556,7 @@
                             scaleLabel: {
                                 fontColor: "black",
                                 fontSize: 20,
-                                labelString: 'Current density(A/cm^2)',
+                                labelString: 'Current density(A/m^3)',
                                 display: true
                             }
                         }]
