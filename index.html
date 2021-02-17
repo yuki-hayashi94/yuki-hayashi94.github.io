@@ -52,24 +52,32 @@
         </p>
         <p>
             <div class="form-check">
-                <input class="form-check-input" type="radio" name="mos" id="mosupdate" onclick="n1=60;dop1=1.0e+24;n2=10;dop2=1.0e+22;n3=10;dop3=1.0e+22;n4=10;dop4=1.0e+22;n5=60;dop5=1.0e+24;ispc=10;dop_spc=1.0e+22;" checked>
+                <input class="form-check-input" type="radio" name="mos" id="mosupdate" onclick="n1=60;dop1=1.0e+24;n2=10;dop2=-1.0e+23;n3=10;dop3=-1.0e+23;n4=10;dop4=-1.0e+23;n5=60;dop5=1.0e+24;ispc=10;dop_spc=1.0e+22;" checked>
                 <label class="form-check-label" for="mosupdate">MOS</label> &emsp;
                 <input class="form-check-input" type="radio" name="mos" id="pnupdate" onclick="n1=60;n2=15;n3=10;n4=10;n5=55;ispc=0;dop1=-1.0e+24;dop2=-1.0e+24;dop3=+1.0e+24;dop4=1.0e+24; dop5=dop4;">
-                <label class="form-check-label" for="pnupdate">PN</label> 
+                <label class="form-check-label" for="pnupdate">PN</label> &emsp; 
+                <input class="form-check-input" type="radio" name="material" id="gaasupdate" onclick="si=0" checked>
+                <label class="form-check-label" for="gaasupdate">GaAs</label> &emsp;
+                <input class="form-check-input" type="radio" name="material" id="siupdate" onclick="si=1">
+                <label class="form-check-label" for="siupdate">Si</label>
             </div>
             <div id="input">
                 <div id="input_mos">
                     <strong>chanel length</strong> <input type="text" name="chanel_length" id="chanel_length" value="30" style="width: 45px;">\(nm\)
-                    <strong>chanel dop</strong> <input type="text" name="chanel_dop" id="chanel_dop" value="1.0e+22" style="width: 80px;"><br>
+                    <strong>chanel dop</strong> <input type="text" name="chanel_dop" id="chanel_dop" value="1.0e+23" style="width: 80px;"><br>
                     <strong>source dop</strong> <input type="text" name="source_dop" id="source_dop" value="1.0e+24" style="width: 80px;">
                     <strong>drain dop</strong> <input type="text" name="drain_dop" id="drain_dop" value="1.0e+24" style="width: 80px;">
                 </div>
             </div>
             <form name="vd">
                 <div>
+                    <!--
+                    <strong>\(v\)</strong> <input id="vd_max" type="text" value="0.2" style="width: 45px;">
+                    -->
                     <strong>\(v_d max\)</strong> <input id="vd_max" type="text" value="0.2" style="width: 45px;">
                     <strong>\(v_d min\)</strong> <input id="vd_min" type="text" value="-0.2" style="width: 45px;">
                     <strong>刻み幅</strong> <input id="delta" type="text" value="0.1" style="width: 45px;"><br>
+                    
                 </div>
             </form>
             <div id="step">
@@ -86,7 +94,7 @@
                 <input type="text" name="fps" value="-" size="5"> steps
             </form>
         </p>
-    <!--</div>-->
+    </div>
     <div class="device", id="device">
         <canvas id="mos"></canvas>
     </div>
@@ -100,7 +108,8 @@
         <div id="grad"></div>
         <canvas id='ctx_field'></canvas>
     </div>
-    
+
+    <script src="./draw.js"></script>
     <script>
         var cnChart, dpsiChart, vdiChart, fieldChart;
         var cnData, dspiData, cnconfig, dpsiconfig, VdIData, vdiconfig, fieldData, fieldconfig;
@@ -162,17 +171,34 @@
         }
         function main() {
             console.log("start")
+            console.log(vd)
             /*初期設定*/
-            initial_setting();
-            initial_settingp();
+            if(si == 0) {
+                initial_setting();
+                initial_settingp();
+                if(dop1 > 0) {
+                    initP0();
+                }else initP0p();
+
+            }else {
+                initial_setting_si();
+                initial_settingp_si();
+            }
             /*メインループ*/
             jtotal = 0;
             jtl = 15000;
             jtrans = jtl / 10;
             for(jt = 1; jt <= jtl+1; jt++) {
+                if((jt % 1000)==0) console.log("jt=%d", jt);
                 t = dt * (jt - 1);
-                if(dop1 > 0) wmc();
-                else wmcp();
+                if(si == 0) {
+                    if(dop1 > 0) wmc();
+                    else wmcp();
+                }else {
+                    if(dop1 > 0) mc_si();
+                    else mcp_si();
+                }
+                
                 if((jt - intMC * Math.floor(jt/intMC)) == 1) {setnszero();}
                 if(vd == vd_display) {
                     if(jt == 1) {
@@ -316,6 +342,19 @@
         step = (vd_max - vd_min) / dif;
         function main_loop() {
             step = Number(step);
+            //vd_display = vd_max;
+            //vd_in = vd_min;
+            /**
+             * -0.2 < vd_in < 0.2
+             * vd = 0.05 => i = 0
+             * 0.05左にずれてるから，vd = -vd_in + 0.05
+             * vd <= 逆バイアス(vd = 0.2)
+             * -vd <= 順方向バイアス(vd = -0.2) 
+             * vd = vd_max;
+             * vd_display = vd;
+             * main();
+             * plotVdIData.push({x: vd, y: -CurQNVav});
+             */
             vd_display = vd_max;
             vd_in = vd_min;
             for(;;) {
@@ -338,9 +377,10 @@
                     reset2();
                     if(vd_in > vd_max) break;
                 }else {
-                    vd = -vd_in + (0.05);
+                    vd = vd_in - 0.06;
                     main();
                     plotVdIData.push({x: vd_in, y: -CurQNVav});
+                    //if(vd_in > vd_max)
                     vd_in += dif;
                     var j = 0;
                     while(j < vd_display+0.15) {
@@ -359,10 +399,12 @@
                     if(vd_in > vd_max) {
                         vd = vd_display;
                         main();   
+                        plotVdIData.push({x: vd_in, y: -CurQNVav});
                         break;
                     }
                 }
             }
+            
             cnData = {
                 datasets: [{
                     label: "電子",
@@ -374,12 +416,14 @@
                 },
                 {   
                     label: "正孔",
-                    borderColor: "red",
-                    backgroundColor: "red",
+                    borderColor: "rgb(255, 165, 0)",
+                    backgroundColor: "rgb(255, 165, 0)",
                     data: plotCpData,
                     fill: false,
                     showLine: true
-                }]
+                },
+                
+            ]
             };
             dspiData = {
                 datasets: [{
@@ -403,6 +447,11 @@
                     legend: {
                         display: true,
                         position: 'top',
+                        labels: {
+                            filter: function(items) {
+                                return items.datasetIndex != 1;
+                            }
+                        }
                     },
                     title: {
                         display: true,
@@ -432,7 +481,8 @@
                         yAxes: [{
                             type: 'linear',
                             ticks: {
-                                max: Math.abs(dop1) * 1.5,
+                                //max: Math.abs(dop1) * 1.5,
+                                max: 1.8e+24,
                                 fontColor: "black",
                                 fontSize: 20,
                                 userCallback: function(value, index, values) {
@@ -446,6 +496,29 @@
                                 display: true
                             }
                         }]
+                    },
+                    plugins: {
+                        zoom: {
+                            // Container for pan options
+                            pan: {
+                                // Boolean to enable panning
+                                enabled: true,
+
+                                // Panning directions. Remove the appropriate direction to disable 
+                                // Eg. 'y' would only allow panning in the y direction
+                                mode: 'xy'
+                            },
+
+                            // Container for zoom options
+                            zoom: {
+                                // Boolean to enable zooming
+                                enabled: true,
+
+                                // Zooming directions. Remove the appropriate direction to disable 
+                                // Eg. 'y' would only allow zooming in the y direction
+                                mode: 'xy',
+                            }
+                        }
                     }
                 }
             };
@@ -483,8 +556,8 @@
                         yAxes: [{
                             type: 'linear',
                             ticks: {
-                                max: 0.05,
-                                min: -vd_display-0.05,
+                                //max: 0.05,
+                                //min: -vd_display-0.05,
                                 fontColor: "black",
                                 fontSize: 20,
                                 stepSize: 0.05,
@@ -499,6 +572,29 @@
                                 display: true
                             }
                         }]
+                    },
+                    plugins: {
+                        zoom: {
+                            // Container for pan options
+                            pan: {
+                                // Boolean to enable panning
+                                enabled: true,
+
+                                // Panning directions. Remove the appropriate direction to disable 
+                                // Eg. 'y' would only allow panning in the y direction
+                                mode: 'xy'
+                            },
+
+                            // Container for zoom options
+                            zoom: {
+                                // Boolean to enable zooming
+                                enabled: true,
+
+                                // Zooming directions. Remove the appropriate direction to disable 
+                                // Eg. 'y' would only allow zooming in the y direction
+                                mode: 'xy',
+                            }
+                        }
                     }
                 }
             }
@@ -519,7 +615,7 @@
                     },
                     title: {
                         display: true,
-                        text: 'vd-i特性'
+                        text: 'v-i特性'
                     },
                     scales: {
                         xAxes: [{
@@ -527,7 +623,8 @@
                             position: 'bottom',
                             ticks: {
                                 //min: -0.2,
-                                //stepSize: 30,
+                                stepSize: 0.1,
+                                //max: vd_display,
                                 fontColor: "black",
                                 fontSize: 20,
                                 userCallback: function(tick){
@@ -536,7 +633,7 @@
                                 },
                             },
                             scaleLabel: {
-                                labelString: 'Drain Voltage(V)',
+                                labelString: 'Voltage(V)',
                                 display: true,
                                 fontColor: "black",
                                 fontSize: 20,
@@ -629,7 +726,7 @@
             console.log('=============');
             console.log('---- END ----');
             console.log('=============');
-            alert("end calculation");
+            //alert("end calculation");
         }
         window.onload = function() {
             mos();
@@ -662,9 +759,9 @@
                 n4 = temp / 3;
             });
             $("#chanel_dop").change(function() {
-                dop2 = Number(this.value);
-                dop3 = Number(this.value);
-                dop4 = Number(this.value);
+                dop2 = Number(-this.value);
+                dop3 = Number(-this.value);
+                dop4 = Number(-this.value);
                 dop_spc = Number(this.value);
             }); 
             $("#source_dop").change(function() {
@@ -838,7 +935,7 @@
                 $('#input').append(
                     "<div id='input_mos'>" +
                     "<strong>chanel length</strong> <input type='text' name='chanel_length' id='chanel_length' value='30' style='width: 45px;'>" +
-                    "<strong>chanel dop</strong> <input type='text' name='chanel_dop' id='chanel_dop' value='1.0e+22' style='width: 80px;'><br>" +
+                    "<strong>chanel dop</strong> <input type='text' name='chanel_dop' id='chanel_dop' value='1.0e+23' style='width: 80px;'><br>" +
                     "<strong>source dop</strong> <input type='text' name='source_dop' id='source_dop' value='1.0e+24' style='width: 80px;'>" +
                     "<strong>drain dop</strong> <input type='text' name='drain_dop' id='drain_dop' value='1.0e+24' style='width: 80px;'>" +
                     "</div>")
@@ -849,9 +946,9 @@
                     n4 = temp / 3;
                 });
                 $("#chanel_dop").change(function() {
-                    dop2 = Number(this.value);
-                    dop3 = Number(this.value);
-                    dop4 = Number(this.value);
+                    dop2 = Number(-this.value);
+                    dop3 = Number(-this.value);
+                    dop4 = Number(-this.value);
                 }); 
                 $("#source_dop").change(function() {
                     dop1 = Number(this.value);
